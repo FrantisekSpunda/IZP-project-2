@@ -81,7 +81,7 @@ run:
 	@if [ ! -f $(BIN_DIR)/$(APPLICATION_NAME).exe ]; then \
 		echo -e " $(call style,Cannot run application!,RED,BOLD)\n You have to run $(call style,'make build',BLUE) first.";\
 	else \
-		cd ./$(BIN_DIR) && ./$(APPLICATION_NAME).exe;\
+		cd ./$(BIN_DIR) && ./$(APPLICATION_NAME).exe $(RUN_PARAMETERS);\
 	fi;
 
 all: build run
