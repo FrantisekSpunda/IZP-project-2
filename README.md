@@ -36,3 +36,14 @@ Using makefile you can run commands for compilation, generating headers and new 
 | `clear` / `clean`   | Remove build folder.                                                                                                                                                          |
 | `header`            | Update or create header in all `.c` files. In header is your name, copyright and last update of file.                                                                         |
 | `module`            | Create new module for C. With this command you will create C module with custom name. In files there will be generated required content that is usualy in all C libraries 👌. |
+
+### Map specifiaction 🗺️
+
+**111b --> rectagnle △ or ▽**
+
+> **first** 1 - wall on **left** (0 means, there is no wall)
+> **second** 1 - wall on **right** (0 means, there is no wall)
+> **third** 1 - wall on **top/bottom** (0 means, there is no wall)
+
+Example:
+Rectangle has wall on left and rigth: 011b = **0**\*2^**2** + **1**\*2^**1** + **1**\*2^**0** = 0 + 2 + 1 = 3

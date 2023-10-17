@@ -8,8 +8,8 @@
       "args": [],
       "stopAtEntry": false,
       "externalConsole": true,
-      "cwd": "c:/Users/FRANTISEK-PC/OneDrive/c_dev/teste/app",
-      "program": "c:/Users/FRANTISEK-PC/OneDrive/c_dev/teste/app/build/Debug/outDebug",
+      "cwd": "c:/Users/FRANTISEK-PC/OneDrive/c_dev/IZP/IZP-project-2/app/src",
+      "program": "c:/Users/FRANTISEK-PC/OneDrive/c_dev/IZP/IZP-project-2/app/src/build/Debug/outDebug",
       "MIMode": "gdb",
       "miDebuggerPath": "C:/MinGW/bin/gdb.exe",
       "setupCommands": [
