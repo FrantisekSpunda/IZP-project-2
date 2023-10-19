@@ -1,8 +1,8 @@
 /**
  * @file main.c
  * @author Frantisek Spunda
- * @date 2023-17-10
- * @brief Second project for subject IZP in BC1 
+ * @date 2023-18-10
+ * @brief Second project for subject IZP in BC1
  *
  * @copyright Copyright (c) 2023
  *
@@ -25,7 +25,7 @@ typedef struct
 
 typedef struct
 {
-  char **name;
+  char *name;
   int argc;
   void (*function)(int argc, char **argv);
 } Command;
@@ -53,7 +53,7 @@ int main(int argc, char **argv)
   // Call function by argument
   for (int i = 0; i < CMD_C; i++)
   {
-    if (strcmp(argv[1], commands[i].name) == 0 && arg_test(argc, commands[i].argc) == 0)
+    if (strcmp(argv[1], commands[i].name) == 0 && arg_test(argc, commands[i].argc))
     {
       commands[i].function(argc, argv);
       break;
@@ -77,8 +77,8 @@ void cmd_help(int argc, char **argv)
 
 void cmd_test(int argc, char **argv)
 {
-  // Map map;
-  // map_load(argc, argv);
+  Map map;
+  map_load(&map, argv[2]);
 
   if (0)
     printf("\n \033[0;32mValid\033[0m\n");
@@ -94,13 +94,17 @@ void cmd_lpath(int argc, char **argv)
 {
 }
 
-void cmd_shortest(int argc, char **argv) {}
+void cmd_shortest(int argc, char **argv)
+{
+}
 
 void map_load(Map *map, char *filename)
 {
   FILE *file = fopen(filename, "r");
   char line[FILE_LINE_LENGTH];
   int i = 0;
+
+  printf("%s << \n", filename);
 
   while (fgets(line, FILE_LINE_LENGTH, file) != NULL)
   {
@@ -111,6 +115,9 @@ void map_load(Map *map, char *filename)
       token = strtok(NULL, " ");
       map->cols = atoi(token);
       map->cells = malloc(map->rows * map->cols);
+    }
+    else
+    {
     }
 
     i++;
@@ -123,6 +130,12 @@ void map_load(Map *map, char *filename)
 
 int arg_test(int argc, int need)
 {
-  if (argc == need)
-    printf("\033[0;31mToo few arguments.\033[0m\n");
+  int res = argc - need;
+  if (res != 0)
+  {
+    printf("\033[0;31mToo %s arguments.\033[0m\n", res > 0 ? "many" : "few");
+    return 0;
+  }
+  else
+    return 1;
 }
