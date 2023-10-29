@@ -44,7 +44,10 @@ bool cmd_lpath(int argc, char **argv);
 bool cmd_shortest(int argc, char **argv);
 cell map_get_cell(Map *map, int row, int col);
 bool isborder(Map *map, int r, int c, cell border);
-int find_way(Map *map, int r, int c, cell entry, int leftright);
+bool find_way(Map *map, int r, int c, cell entry, int leftright);
+cell next_border(int r, int c, cell entry, int next, int leftright);
+cell cell_type(int r, int c);
+bool run_check_path(Map *map, int r, int c, bool condition, cell border_by_side, int leftright);
 
 int main(int argc, char **argv)
 {
@@ -53,7 +56,7 @@ int main(int argc, char **argv)
       {"--help", 2, cmd_help},
       {"--test", 3, cmd_test},
       {"--rpath", 5, cmd_rpath},
-      {"--lpath", 5, cmd_rpath},
+      {"--lpath", 5, cmd_lpath},
       {"--shortest", 5, cmd_shortest},
   };
 
@@ -107,40 +110,65 @@ bool cmd_rpath(int argc, char **argv)
   return 0;
 }
 
-int start_border(Map *map, int r, int c, int leftright)
+bool cmd_lpath(int argc, char **argv)
 {
-  printf("%i, %i\n", r, c);
+  Map map;
+  bool load_error = map_load(&map, argv[4]);
+  if (load_error)
+  {
+    fprintf(stderr, "Error while loading map");
+    return true;
+  }
 
-  run_check_path(map, r, c, r == 0, 4, leftright);
-  run_check_path(map, r, c, r == map->rows - 1 && map->rows % 2, 4, leftright);
-  run_check_path(map, r, c, c == 0, 1, leftright);
-  run_check_path(map, r, c, c == map->cols - 1, 2, leftright);
+  int start_row = atoi(argv[2]) - 1;
+  int start_col = atoi(argv[3]) - 1;
 
-  return 1;
-};
+  start_border(&map, start_row, start_col, 0);
 
-void run_check_path(Map *map, int r, int c, bool condition, cell border_by_side, int leftright)
-{
-  if (condition)
-    if (!isborder(map, r, c, border_by_side))
-      find_way(map, r, c, border_by_side, leftright);
+  return 0;
 }
 
-int find_way(Map *map, int r, int c, cell entry, int leftright)
+int start_border(Map *map, int r, int c, int leftright)
+{
+  if (run_check_path(map, r, c, r == 0, 4, leftright))
+    return false;
+  else if (run_check_path(map, r, c, r == map->rows - 1 && map->rows % 2, 4, leftright))
+    return false;
+  else if (run_check_path(map, r, c, c == 0, 1, leftright))
+    return false;
+  else if (run_check_path(map, r, c, c == map->cols - 1, 2, leftright))
+    return false;
+
+  return true;
+};
+
+bool run_check_path(Map *map, int r, int c, bool condition, cell border_by_side, int leftright)
+{
+  if (condition)
+  {
+    if (!isborder(map, r, c, border_by_side))
+    {
+      // cell next_border_by_side = next_border(r, c, border_by_side, 1, leftright);
+      // if (!isborder(map, r, c, next_border_by_side))
+      //   border_by_side = next_border_by_side;
+
+      return find_way(map, r, c, border_by_side, leftright);
+    }
+    return false;
+  }
+  else
+    return false;
+}
+
+bool find_way(Map *map, int r, int c, cell entry, int leftright)
 {
   for (int i = 1; i < 4; i++)
   {
-    int cell_type = (r + c) % 2 == 0; // TRUE border on bottom / FALSE border on top)
-
-    cell border = leftright ^ cell_type ? ((entry << 3) >> i) : entry << i;
-
-    if (border > 4)
-      border >>= 3;
-
     // entry = 1                entry = 2               entry = 4
     // i = 1, border = 4 (2)    i = 1, border = 1 (4)   i = 1, border = 2 (1)
     // i = 2, border = 2 (4)    i = 2, border = 4 (1)   i = 2, border = 1 (2)
     // i = 3, border = 1 (1)    i = 3, border = 2 (2)   i = 3, border = 4 (4)
+    cell border = next_border(r, c, entry, i, leftright);
 
     bool is_border = isborder(map, r, c, border);
 
@@ -154,20 +182,39 @@ int find_way(Map *map, int r, int c, cell entry, int leftright)
       cell new_entry = border == 4 ? border : 3 ^ border;
 
       int new_c = border == 4 ? c : (border == 1 ? c - 1 : c + 1);
-      int new_r = border != 4 ? r : (cell_type ? r - 1 : r + 1);
+      int new_r = border != 4 ? r : (cell_type(r, c) ? r - 1 : r + 1);
 
       if (new_r < map->rows && new_r > -1 && new_c < map->cols && new_c > -1)
+      {
         find_way(map, new_r, new_c, new_entry, leftright);
+        return true;
+      }
       else
-        printf("No way!\n");
+      {
+        printf("No way! :D");
+        return false;
+      }
 
       break;
     }
   }
 }
 
-bool cmd_lpath(int argc, char **argv)
+cell cell_type(int r, int c)
 {
+  return (r + c) % 2 == 0;
+}
+
+cell next_border(int r, int c, cell entry, int next, int leftright)
+{
+  cell type = cell_type(r, c); // TRUE border on bottom / FALSE border on top)
+
+  cell border = leftright ^ type ? ((entry << 3) >> next) : entry << next;
+
+  if (border > 4)
+    border >>= 3;
+
+  return border;
 }
 
 bool cmd_shortest(int argc, char **argv)
