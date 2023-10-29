@@ -67,6 +67,7 @@
     "stdlib.h": "c",
     "main.h": "c",
     "lib.h": "c",
-    "stdio.h": "c"
+    "stdio.h": "c",
+    "assert.h": "c"
   }
 }
