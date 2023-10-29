@@ -99,19 +99,32 @@ bool cmd_rpath(int argc, char **argv)
     return true;
   }
 
-  // int start_row = atoi(argv[2]) - 1;
-  // int start_col = atoi(argv[3]) - 1;
+  int start_row = atoi(argv[2]) - 1;
+  int start_col = atoi(argv[3]) - 1;
 
-  find_way(&map, 5, 0, 1, 1);
+  start_border(&map, start_row, start_col, 1);
 
   return 0;
 }
 
 int start_border(Map *map, int r, int c, int leftright)
 {
+  printf("%i, %i\n", r, c);
+
+  run_check_path(map, r, c, r == 0, 4, leftright);
+  run_check_path(map, r, c, r == map->rows - 1 && map->rows % 2, 4, leftright);
+  run_check_path(map, r, c, c == 0, 1, leftright);
+  run_check_path(map, r, c, c == map->cols - 1, 2, leftright);
 
   return 1;
 };
+
+void run_check_path(Map *map, int r, int c, bool condition, cell border_by_side, int leftright)
+{
+  if (condition)
+    if (!isborder(map, r, c, border_by_side))
+      find_way(map, r, c, border_by_side, leftright);
+}
 
 int find_way(Map *map, int r, int c, cell entry, int leftright)
 {
