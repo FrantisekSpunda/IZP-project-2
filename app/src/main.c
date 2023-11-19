@@ -1,7 +1,7 @@
 /**
  * @file main.c
  * @author Frantisek Spunda
- * @date 2023-29-10
+ * @date 2023-19-11
  * @brief Second project for subject IZP in BC1 
  *
  * @copyright Copyright (c) 2023
@@ -18,6 +18,21 @@
 #define FILE_LINE_LENGTH 100
 #define CMD_C 5
 
+typedef enum Border_enum
+{
+  NONE,
+  LEFT,
+  RIGTH,
+  BIT_C,
+  TOP_BOTTOM
+} border;
+
+typedef enum Hand_rule_enum
+{
+  LEFT_HAND,
+  RIGTH_HAND
+} hand_rule;
+
 typedef unsigned char cell;
 
 typedef struct
@@ -31,23 +46,23 @@ typedef struct
 {
   char *name;
   int argc;
-  bool (*function)(int argc, char **argv);
+  bool (*function)(char **argv);
 } Command;
 
 bool arg_test(int argc, int need);
 bool map_load(Map *map, char *filename);
 
-bool cmd_help(int argc, char **argv);
-bool cmd_test(int argc, char **argv);
-bool cmd_rpath(int argc, char **argv);
-bool cmd_lpath(int argc, char **argv);
-bool cmd_shortest(int argc, char **argv);
+bool cmd_help(char **argv);
+bool cmd_test(char **argv);
+bool cmd_rpath(char **argv);
+bool cmd_lpath(char **argv);
+// bool cmd_shortest(char **argv);
 cell map_get_cell(Map *map, int row, int col);
-bool isborder(Map *map, int r, int c, cell border);
-bool find_way(Map *map, int r, int c, cell entry, int leftright);
-cell next_border(int r, int c, cell entry, int next, int leftright);
-cell cell_type(int r, int c);
-bool run_check_path(Map *map, int r, int c, bool condition, cell border_by_side, int leftright);
+bool cell_type(int r, int c);
+bool isborder(Map *map, int r, int c, border border);
+bool find_way(Map *map, int r, int c, border entry, hand_rule leftright);
+border next_border(int r, int c, border entry, int next, hand_rule leftright);
+border start_border(Map *map, int r, int c, hand_rule leftright);
 
 int main(int argc, char **argv)
 {
@@ -57,14 +72,14 @@ int main(int argc, char **argv)
       {"--test", 3, cmd_test},
       {"--rpath", 5, cmd_rpath},
       {"--lpath", 5, cmd_lpath},
-      {"--shortest", 5, cmd_shortest},
+      // {"--shortest", 5, cmd_shortest},
   };
 
   // Call function by argument
   for (int i = 0; i < CMD_C; i++)
   {
     if (strcmp(argv[1], commands[i].name) == 0 && arg_test(argc, commands[i].argc))
-      return commands[i].function(argc, argv);
+      return commands[i].function(argv);
     else if (i == CMD_C)
       fprintf(stderr, "\033[0;31mInvalid arguments.\033[0m\n");
   }
@@ -72,7 +87,7 @@ int main(int argc, char **argv)
   return 0;
 }
 
-bool cmd_help(int argc, char **argv)
+bool cmd_help(char **argv)
 {
   printf(" You can use these commands:\n"
          "\t\033[0;32m--help\033[0m\t\tShows this help\n"
@@ -84,161 +99,157 @@ bool cmd_help(int argc, char **argv)
   return 0;
 }
 
-bool cmd_test(int argc, char **argv)
+bool cmd_test(char **argv)
 {
   Map map;
-  bool load_error = map_load(&map, argv[2]);
-  printf("%s\n", load_error ? "Invalid" : "Valid");
-  return load_error;
+  bool error = map_load(&map, argv[2]);
+
+  if (error)
+  {
+    printf("Invalid");
+    return true;
+  }
+
+  for (int row = 0; row < map.rows; row++)
+  {
+    for (int col = 0; col < ((row + col) % 2 ? map.cols : map.cols - 1); col++)
+    {
+
+      if (col + 1 < map.cols)
+      {
+        cell curr = map_get_cell(&map, row, col);
+        cell on_rigth = map_get_cell(&map, row, col + 1);
+        if (((curr >> 1) ^ on_rigth) & 0b001)
+        {
+          error = true;
+          break;
+        }
+      }
+
+      if ((row + col) % 2 && row + 1 < map.rows)
+      {
+        cell curr = map_get_cell(&map, row, col);
+        cell on_bottom = map_get_cell(&map, row + 1, col);
+
+        if ((curr ^ on_bottom) & 0b100)
+        {
+          error = true;
+          break;
+        }
+      }
+    }
+
+    if (error)
+      break;
+  }
+
+  printf("%s\n", error ? "Invalid" : "Valid");
+  return error;
 }
 
-bool cmd_rpath(int argc, char **argv)
+bool cmd_rpath(char **argv)
 {
   Map map;
-  bool load_error = map_load(&map, argv[4]);
-  if (load_error)
+  if (map_load(&map, argv[4]))
   {
     fprintf(stderr, "Error while loading map");
     return true;
   }
 
-  int start_row = atoi(argv[2]) - 1;
-  int start_col = atoi(argv[3]) - 1;
-
-  start_border(&map, start_row, start_col, 1);
+  int first_r = atoi(argv[2]) - 1;
+  int first_c = atoi(argv[3]) - 1;
+  border first_entry = start_border(&map, first_r, first_c, 1);
+  find_way(&map, first_r, first_c, first_entry, 1);
 
   return 0;
 }
 
-bool cmd_lpath(int argc, char **argv)
+bool cmd_lpath(char **argv)
 {
   Map map;
-  bool load_error = map_load(&map, argv[4]);
-  if (load_error)
+  if (map_load(&map, argv[4]))
   {
     fprintf(stderr, "Error while loading map");
     return true;
   }
 
-  int start_row = atoi(argv[2]) - 1;
-  int start_col = atoi(argv[3]) - 1;
-
-  start_border(&map, start_row, start_col, 0);
+  int first_r = atoi(argv[2]) - 1;
+  int first_c = atoi(argv[3]) - 1;
+  border first_entry = start_border(&map, first_r, first_c, 0);
+  find_way(&map, first_r, first_c, first_entry, 0);
 
   return 0;
 }
 
-int start_border(Map *map, int r, int c, int leftright)
+border start_border(Map *map, int r, int c, hand_rule leftright)
 {
-  if (run_check_path(map, r, c, r == 0, 4, leftright))
-    return false;
-  else if (run_check_path(map, r, c, r == map->rows - 1 && map->rows % 2, 4, leftright))
-    return false;
-  else if (run_check_path(map, r, c, c == 0, 1, leftright))
-    return false;
-  else if (run_check_path(map, r, c, c == map->cols - 1, 2, leftright))
-    return false;
+  if ((r == map->rows - 1 && (map->rows - 1) % 2) && !isborder(map, r, c, TOP_BOTTOM))
+  {
+    if (!((c == 0 && leftright == LEFT_HAND && !isborder(map, r, c, LEFT)) || (c + 1 == map->cols && leftright == RIGTH_HAND && !isborder(map, r, c, RIGTH))))
+      return TOP_BOTTOM;
+  }
+  if (r == 0 && !isborder(map, r, c, TOP_BOTTOM))
+  {
+    if (!((c == 0 && leftright == RIGTH_HAND && !isborder(map, r, c, LEFT)) || (c + 1 == map->cols && leftright == LEFT_HAND && !isborder(map, r, c, RIGTH))))
+      return TOP_BOTTOM;
+  }
+  if (c == 0 && !isborder(map, r, c, LEFT))
+    return LEFT;
+  if (c == map->cols - 1 && !isborder(map, r, c, RIGTH))
+    return RIGTH;
 
-  return true;
+  return NONE;
 };
 
-bool run_check_path(Map *map, int r, int c, bool condition, cell border_by_side, int leftright)
+bool find_way(Map *map, int r, int c, border entry, hand_rule leftright)
 {
-  if (condition)
-  {
-    if (!isborder(map, r, c, border_by_side))
-    {
-      // cell next_border_by_side = next_border(r, c, border_by_side, 1, leftright);
-      // if (!isborder(map, r, c, next_border_by_side))
-      //   border_by_side = next_border_by_side;
-
-      return find_way(map, r, c, border_by_side, leftright);
-    }
+  if (entry == NONE)
     return false;
-  }
-  else
-    return false;
-}
 
-bool find_way(Map *map, int r, int c, cell entry, int leftright)
-{
   for (int i = 1; i < 4; i++)
   {
-    // entry = 1                entry = 2               entry = 4
-    // i = 1, border = 4 (2)    i = 1, border = 1 (4)   i = 1, border = 2 (1)
-    // i = 2, border = 2 (4)    i = 2, border = 4 (1)   i = 2, border = 1 (2)
-    // i = 3, border = 1 (1)    i = 3, border = 2 (2)   i = 3, border = 4 (4)
-    cell border = next_border(r, c, entry, i, leftright);
+    border new_border = next_border(r, c, entry, i, leftright);
 
-    bool is_border = isborder(map, r, c, border);
-
-    if (!is_border)
+    if (!isborder(map, r, c, new_border))
     {
       printf("%i, %i\n", r + 1, c + 1);
 
-      // border = 1, new_entry = 2
-      // border = 2, new_entry = 1
-      // border = 4, new_entry = 4
-      cell new_entry = border == 4 ? border : 3 ^ border;
-
-      int new_c = border == 4 ? c : (border == 1 ? c - 1 : c + 1);
-      int new_r = border != 4 ? r : (cell_type(r, c) ? r - 1 : r + 1);
+      border new_entry = new_border == TOP_BOTTOM ? new_border : 0b011 ^ new_border;
+      int new_c = new_border == TOP_BOTTOM ? c : (new_border == LEFT ? c - 1 : c + 1);
+      int new_r = new_border != TOP_BOTTOM ? r : (cell_type(r, c) ? r - 1 : r + 1);
 
       if (new_r < map->rows && new_r > -1 && new_c < map->cols && new_c > -1)
-      {
         find_way(map, new_r, new_c, new_entry, leftright);
-        return true;
-      }
-      else
-      {
-        printf("No way! :D");
-        return false;
-      }
-
-      break;
+      return true;
     }
   }
 }
 
-cell cell_type(int r, int c)
+bool cell_type(int r, int c)
 {
   return (r + c) % 2 == 0;
 }
 
-cell next_border(int r, int c, cell entry, int next, int leftright)
+border next_border(int r, int c, border entry, int next, hand_rule leftright)
 {
-  cell type = cell_type(r, c); // TRUE border on bottom / FALSE border on top)
+  border border = leftright ^ cell_type(r, c) ? ((entry << BIT_C) >> next) : entry << next;
 
-  cell border = leftright ^ type ? ((entry << 3) >> next) : entry << next;
-
-  if (border > 4)
-    border >>= 3;
+  if (border > TOP_BOTTOM)
+    border >>= BIT_C;
 
   return border;
 }
 
-bool cmd_shortest(int argc, char **argv)
-{
-}
-
 /**
  * @brief Checks if there is border of given type.
- *
- * @param map pointer to map
- * @param r row of cell
- * @param c column of cell
- * @param border type of border - `L` - left, `R` - right, `T` - top, `B` - bottom (`T` and `B` has same effect)
- * @return boolean - true if border, false if not
  */
-bool isborder(Map *map, int r, int c, cell border)
+bool isborder(Map *map, int r, int c, border border)
 {
-  if (border == 1 || border == 2 || border == 4)
+  if (border == LEFT || border == RIGTH || border == TOP_BOTTOM)
     return border & map_get_cell(map, r, c);
-  else
-  {
-    fprintf(stderr, "Invalid border type.\n");
-    return true;
-  }
+
+  fprintf(stderr, "Invalid border type.\n");
+  return true;
 }
 
 /**
@@ -246,7 +257,7 @@ bool isborder(Map *map, int r, int c, cell border)
  *
  * @param map
  * @param filename
- * @return 1 if error, 0 if success
+ * @return true if error, false if success
  */
 bool map_load(Map *map, char *filename)
 {
@@ -278,34 +289,28 @@ bool map_load(Map *map, char *filename)
             found++;
           }
           else if (line[c] != ' ' && line[c] != '\n' && line[c] != '\t' && line[c] != '\r' && line[c] != '\0')
-          {
-            fprintf(stderr, "Invalid character: %c\n", line[c]);
             return true;
-          }
         }
+        if (found != map->cols)
+          return true;
       }
 
       line_index++;
     }
 
     fclose(file);
-  }
-  else
-  {
-    fprintf(stderr, "\033[0;31mInvalid file.\033[0m\n");
-    return true;
+
+    if (line_index - 1 != map->rows)
+      return true;
+
+    return false;
   }
 
-  return false;
+  return true;
 }
 
 /**
- * @brief Get cell value.
- *
- * @param map
- * @param row
- * @param col
- * @return cell
+ * @brief Get value of cell in map.
  */
 cell map_get_cell(Map *map, int row, int col)
 {
@@ -314,10 +319,6 @@ cell map_get_cell(Map *map, int row, int col)
 
 /**
  * @brief Test if there are right number of arguments.
- *
- * @param argc
- * @param need
- * @return int
  */
 bool arg_test(int argc, int need)
 {
@@ -327,6 +328,5 @@ bool arg_test(int argc, int need)
     printf("\033[0;31mToo %s arguments.\033[0m\n", res > 0 ? "many" : "few");
     return false;
   }
-  else
-    return true;
+  return true;
 }
