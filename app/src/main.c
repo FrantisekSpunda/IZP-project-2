@@ -18,16 +18,16 @@
 #define FILE_LINE_LENGTH 100
 #define CMD_C 5
 
-typedef enum Border_enum
+typedef enum border_enum
 {
   NONE,
   LEFT,
   RIGTH,
-  BIT_C,
+  BORDER_SIZE,
   TOP_BOTTOM
 } border_t;
 
-typedef enum Hand_rule_enum
+typedef enum hand_rule_enum
 {
   LEFT_HAND,
   RIGTH_HAND
@@ -55,11 +55,11 @@ bool cmd_rpath(char **argv);
 bool cmd_lpath(char **argv);
 // bool cmd_shortest(char **argv);
 
-cell_t map_get_cell(map_t *map, int row, int col);
 bool map_test(map_t *map);
 bool map_load(map_t *map, char *filename);
 bool isborder(map_t *map, int r, int c, border_t border);
 bool find_hand_rule(map_t *map, int r, int c, border_t border, hand_rule_t leftright);
+cell_t map_get_cell(map_t *map, int row, int col);
 border_t start_border(map_t *map, int r, int c, hand_rule_t leftright);
 border_t next_border(int r, int c, border_t border, int next, hand_rule_t leftright);
 
@@ -170,20 +170,21 @@ border_t start_border(map_t *map, int r, int c, hand_rule_t leftright)
 bool find_hand_rule(map_t *map, int r, int c, border_t border, hand_rule_t leftright)
 {
   if (border != NONE)
-    for (int i = 1; i < 4; i++)
+    for (int i = 1; i <= BORDER_SIZE; i++)
     {
-      border = next_border(r, c, border, i, leftright);
+      border_t new_border = next_border(r, c, border, i, leftright);
 
-      if (!isborder(map, r, c, border))
+      if (!isborder(map, r, c, new_border))
       {
-        printf("%i, %i\n", r + 1, c + 1);
+        printf("%i,%i\n", r + 1, c + 1);
 
-        int new_c = border == TOP_BOTTOM ? c : (border == LEFT ? c - 1 : c + 1);
-        int new_r = border != TOP_BOTTOM ? r : (cell_type(r, c) ? r - 1 : r + 1);
-        border = border == TOP_BOTTOM ? border : 0b011 ^ border;
+        int new_c = new_border == TOP_BOTTOM ? c : (new_border == LEFT ? c - 1 : c + 1);
+        int new_r = new_border != TOP_BOTTOM ? r : (cell_type(r, c) ? r - 1 : r + 1);
+        if (new_border != TOP_BOTTOM)
+          new_border ^= 0b011;
 
         if (new_r < map->rows && new_r > -1 && new_c < map->cols && new_c > -1)
-          find_hand_rule(map, new_r, new_c, border, leftright);
+          find_hand_rule(map, new_r, new_c, new_border, leftright);
         return true;
       }
     }
@@ -196,14 +197,14 @@ bool cell_type(int r, int c)
   return (r + c) % 2 == 0;
 }
 
-border_t next_border(int r, int c, border_t entry, int next, hand_rule_t leftright)
+border_t next_border(int r, int c, border_t border, int next, hand_rule_t leftright)
 {
-  border_t border = leftright ^ cell_type(r, c) ? ((entry << BIT_C) >> next) : entry << next;
+  int new_border = leftright ^ cell_type(r, c) ? ((border << BORDER_SIZE) >> next) : border << next;
 
-  if (border > TOP_BOTTOM)
-    border >>= BIT_C;
+  if (new_border > TOP_BOTTOM)
+    new_border >>= BORDER_SIZE;
 
-  return border;
+  return new_border;
 }
 
 /**
@@ -228,8 +229,8 @@ bool map_test(map_t *map)
 
       if (col + 1 < map->cols)
       {
-        cell_t curr = map_get_cell(&map, row, col);
-        cell_t on_rigth = map_get_cell(&map, row, col + 1);
+        cell_t curr = map_get_cell(map, row, col);
+        cell_t on_rigth = map_get_cell(map, row, col + 1);
         if (((curr >> 1) ^ on_rigth) & 0b001)
         {
           error = true;
@@ -239,8 +240,8 @@ bool map_test(map_t *map)
 
       if ((row + col) % 2 && row + 1 < map->rows)
       {
-        cell_t curr = map_get_cell(&map, row, col);
-        cell_t on_bottom = map_get_cell(&map, row + 1, col);
+        cell_t curr = map_get_cell(map, row, col);
+        cell_t on_bottom = map_get_cell(map, row + 1, col);
 
         if ((curr ^ on_bottom) & 0b100)
         {
