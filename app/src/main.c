@@ -1,7 +1,7 @@
 /**
  * @file main.c
  * @author Frantisek Spunda
- * @date 2023-19-11
+ * @date 2023-24-11
  * @brief Second project for subject IZP in BC1
  *
  * @copyright Copyright (c) 2023
@@ -15,13 +15,13 @@
 #include <assert.h>
 
 #define FILE_LINE_LENGTH 100
-#define CMD_C 5
+#define CMD_C 4
 
 typedef enum border_enum
 {
   NONE,
   LEFT,
-  RIGTH,
+  RIGHT,
   BORDER_SIZE,
   TOP_BOTTOM
 } border_t;
@@ -29,7 +29,7 @@ typedef enum border_enum
 typedef enum hand_rule_enum
 {
   LEFT_HAND,
-  RIGTH_HAND
+  RIGHT_HAND
 } hand_rule_t;
 
 typedef unsigned char cell_t;
@@ -61,6 +61,7 @@ bool find_hand_rule(map_t *map, int r, int c, border_t border, hand_rule_t leftr
 cell_t map_get_cell(map_t *map, int row, int col);
 border_t start_border(map_t *map, int r, int c, hand_rule_t leftright);
 border_t next_border(int r, int c, border_t border, int next, hand_rule_t leftright);
+void map_free();
 
 bool arg_test(int argc, int need);
 bool cell_type(int r, int c);
@@ -79,9 +80,10 @@ int main(int argc, char **argv)
   // Call function by argument
   for (int i = 0; i < CMD_C; i++)
   {
-    if (strcmp(argv[1], commands[i].name) == 0 && arg_test(argc, commands[i].argc))
-      return commands[i].function(argv);
-    else if (i == CMD_C)
+    if (strcmp(argv[1], commands[i].name) == 0)
+      return arg_test(argc, commands[i].argc) ? commands[i].function(argv) : false;
+
+    if (i + 1 == CMD_C)
       fprintf(stderr, "\033[0;31mInvalid arguments.\033[0m\n");
   }
 
@@ -96,7 +98,7 @@ bool cmd_help(char **argv)
            "\t\033[0;32m--test\033[0m\t\tTest labirint format\n"
            "\t\033[0;32m--rpath\033[0m\n"
            "\t\033[0;32m--lpath\033[0m\n"
-           "\t\033[0;32m--shortest\033[0m");
+           "\t\033[0;32m--shortest\033[0m\n");
 
   return 0;
 }
@@ -108,6 +110,7 @@ bool cmd_test(char **argv)
   if (!error)
     error = map_test(&map);
 
+  map_free(&map);
   printf("%s\n", error ? "Invalid" : "Valid");
   return error;
 }
@@ -125,6 +128,7 @@ bool cmd_rpath(char **argv)
   int first_c = atoi(argv[3]) - 1;
   border_t border = start_border(&map, first_r, first_c, 1);
   find_hand_rule(&map, first_r, first_c, border, 1);
+  map_free(&map);
 
   return 0;
 }
@@ -142,27 +146,29 @@ bool cmd_lpath(char **argv)
   int first_c = atoi(argv[3]) - 1;
   border_t border = start_border(&map, first_r, first_c, 0);
   find_hand_rule(&map, first_r, first_c, border, 0);
+  map_free(&map);
 
   return 0;
 }
 
 border_t start_border(map_t *map, int r, int c, hand_rule_t leftright)
 {
-  if ((r == map->rows - 1 && (map->rows - 1) % 2) && !isborder(map, r, c, TOP_BOTTOM))
+  if ((r == map->rows - 1 && (r + c) % 2) && !isborder(map, r, c, TOP_BOTTOM)) // TODO shit
   {
-    if (!((c == 0 && leftright == LEFT_HAND && !isborder(map, r, c, LEFT)) || (c + 1 == map->cols && leftright == RIGTH_HAND && !isborder(map, r, c, RIGTH))))
+    if (!((c == 0 && leftright == LEFT_HAND && !isborder(map, r, c, LEFT)) || (c + 1 == map->cols && leftright == RIGHT_HAND && !isborder(map, r, c, RIGHT))))
       return TOP_BOTTOM;
   }
-  if (r == 0 && !isborder(map, r, c, TOP_BOTTOM))
+  if (r == 0 && !((r + c) % 2) && !isborder(map, r, c, TOP_BOTTOM))
   {
-    if (!((c == 0 && leftright == RIGTH_HAND && !isborder(map, r, c, LEFT)) || (c + 1 == map->cols && leftright == LEFT_HAND && !isborder(map, r, c, RIGTH))))
+    if (!((c == 0 && leftright == RIGHT_HAND && !isborder(map, r, c, LEFT)) || (c + 1 == map->cols && leftright == LEFT_HAND && !isborder(map, r, c, RIGHT))))
       return TOP_BOTTOM;
   }
   if (c == 0 && !isborder(map, r, c, LEFT))
     return LEFT;
-  if (c == map->cols - 1 && !isborder(map, r, c, RIGTH))
-    return RIGTH;
+  if (c == map->cols - 1 && !isborder(map, r, c, RIGHT))
+    return RIGHT;
 
+  printf("It is not possible to enter the maze from passed cell\n");
   return NONE;
 };
 
@@ -211,7 +217,7 @@ border_t next_border(int r, int c, border_t border, int next, hand_rule_t leftri
  */
 bool isborder(map_t *map, int r, int c, border_t border)
 {
-  if (border == LEFT || border == RIGTH || border == TOP_BOTTOM)
+  if (border == LEFT || border == RIGHT || border == TOP_BOTTOM)
     return border & map_get_cell(map, r, c);
 
   fprintf(stderr, "Invalid border type.\n");
@@ -229,8 +235,8 @@ bool map_test(map_t *map)
       if (col + 1 < map->cols)
       {
         cell_t curr = map_get_cell(map, row, col);
-        cell_t on_rigth = map_get_cell(map, row, col + 1);
-        if (((curr >> 1) ^ on_rigth) & 0b001)
+        cell_t on_right = map_get_cell(map, row, col + 1);
+        if (((curr >> 1) ^ on_right) & 0b001)
         {
           error = true;
           break;
@@ -268,50 +274,62 @@ bool map_load(map_t *map, char *filename)
 {
   FILE *file = fopen(filename, "r");
 
-  if (file != NULL)
+  if (file == NULL)
+    return true;
+
+  char line[FILE_LINE_LENGTH];
+  int line_index = 0;
+
+  while (fgets(line, FILE_LINE_LENGTH, file) != NULL)
   {
-    char line[FILE_LINE_LENGTH];
-    int line_index = 0;
-
-    while (fgets(line, FILE_LINE_LENGTH, file) != NULL)
+    if (line_index == 0)
     {
-      if (line_index == 0)
+      char *token = strtok(line, " ");
+      map->rows = atoi(token);
+      token = strtok(NULL, " ");
+      map->cols = atoi(token);
+      map->cells = malloc(map->rows * map->cols);
+    }
+    else
+    {
+      int found = 0;
+      for (int c = 0; line[c]; c++)
       {
-        char *token = strtok(line, " ");
-        map->rows = atoi(token);
-        token = strtok(NULL, " ");
-        map->cols = atoi(token);
-        map->cells = malloc(map->rows * map->cols);
-      }
-      else
-      {
-        int found = 0;
-        for (int c = 0; line[c]; c++)
+        if (line[c] >= '0' && line[c] <= '7')
         {
-          if (line[c] >= '0' && line[c] <= '7')
-          {
-            map->cells[(line_index - 1) * map->cols + found] = line[c] - '0';
-            found++;
-          }
-          else if (line[c] != ' ' && line[c] != '\n' && line[c] != '\t' && line[c] != '\r' && line[c] != '\0')
-            return true;
+          map->cells[(line_index - 1) * map->cols + found] = line[c] - '0';
+          found++;
         }
-        if (found != map->cols)
+        else if (line[c] != ' ' && line[c] != '\n' && line[c] != '\t' && line[c] != '\r' && line[c] != '\0')
+        {
+          map_free(map);
           return true;
+        }
       }
-
-      line_index++;
+      if (found != map->cols)
+      {
+        map_free(map);
+        return true;
+      }
     }
 
-    fclose(file);
-
-    if (line_index - 1 != map->rows)
-      return true;
-
-    return false;
+    line_index++;
   }
 
-  return true;
+  fclose(file);
+
+  if (line_index - 1 != map->rows)
+  {
+    map_free(map);
+    return true;
+  }
+
+  return false;
+}
+
+void map_free(map_t *map)
+{
+  free(map->cells);
 }
 
 /**

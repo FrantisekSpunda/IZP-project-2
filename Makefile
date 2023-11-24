@@ -78,10 +78,10 @@ $(TARGET): $(OBJS)
 	fi;
 
 run:
-	@if [ ! -f $(BIN_DIR)/$(APPLICATION_NAME).exe ]; then \
-		echo -e " $(call style,Cannot run application!,RED,BOLD)\n You have to run $(call style,'make build',BLUE) first.";\
+	@if [ ! -f $(BIN_DIR)/$(APPLICATION_NAME) ]; then \
+		echo " $(call style,Cannot run application!,RED,BOLD)\n You have to run $(call style,'make build',BLUE) first.";\
 	else \
-		cd ./$(BIN_DIR) && ./$(APPLICATION_NAME).exe $(RUN_PARAMETERS);\
+		cd ./$(BIN_DIR) && ./$(APPLICATION_NAME) $(RUN_PARAMETERS);\
 	fi;
 
 all: build run

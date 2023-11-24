@@ -104,3 +104,4 @@ test_example "--lpath 6 1 ./inputs/bludiste.txt"     3
 test_example "--lpath 6 7 ./inputs/bludiste.txt"     4
 test_example "--rpath 6 1 ./inputs/bludiste.txt"     5
 test_example "--rpath 6 7 ./inputs/bludiste.txt"     6
+
