@@ -2,7 +2,7 @@
  * @file main.c
  * @author Frantisek Spunda
  * @date 2023-28-11
- * @brief Second project for subject IZP in BC1
+ * @brief Second project for subject IZP in BC1 
  *
  * @copyright Copyright (c) 2023
  *
@@ -74,6 +74,12 @@ int main(int argc, char **argv)
       // {"--shortest", 5, cmd_shortest},
   };
 
+  if (argc == 1)
+  {
+    cmd_help(argv);
+    return 0;
+  }
+
   // Call function by passed argument
   int cmd_c = sizeof(commands) / sizeof(command_t);
   for (int i = 0; i < cmd_c; i++)
@@ -116,7 +122,7 @@ bool cmd_test(char **argv)
   bool error = map_load(&map, argv[2]) || map_test(&map);
   map_free(&map);
   printf("%s\n", error ? "Invalid" : "Valid");
-  return error;
+  return true;
 }
 
 bool cmd_rpath(char **argv)
