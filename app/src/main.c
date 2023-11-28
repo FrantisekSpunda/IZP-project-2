@@ -51,7 +51,6 @@ bool cmd_help(char **argv);
 bool cmd_test(char **argv);
 bool cmd_rpath(char **argv);
 bool cmd_lpath(char **argv);
-// bool cmd_shortest(char **argv);
 
 bool map_test(map_t *map);
 bool map_load(map_t *map, char *filename);
@@ -71,7 +70,6 @@ int main(int argc, char **argv)
       {"--test", 3, cmd_test},
       {"--rpath", 5, cmd_rpath},
       {"--lpath", 5, cmd_lpath},
-      // {"--shortest", 5, cmd_shortest},
   };
 
   if (argc == 1)
@@ -147,7 +145,7 @@ bool cmd_rpath(char **argv)
   find_hand_rule(&map, first_r, first_c, border, 1);
   map_free(&map);
 
-  return 0;
+  return false;
 }
 
 bool cmd_lpath(char **argv)
@@ -172,7 +170,7 @@ bool cmd_lpath(char **argv)
   find_hand_rule(&map, first_r, first_c, border, 0);
   map_free(&map);
 
-  return 0;
+  return false;
 }
 
 /**
@@ -333,7 +331,7 @@ bool map_load(map_t *map, char *filename)
       map->rows = atoi(token);
       token = strtok(NULL, " ");
       map->cols = atoi(token);
-      map->cells = malloc(map->rows * map->cols);
+      map->cells = malloc(map->rows * map->cols * sizeof(cell_t));
       if (map->cells == NULL)
         return true;
     }
