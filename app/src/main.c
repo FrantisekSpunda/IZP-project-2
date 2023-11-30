@@ -1,7 +1,7 @@
 /**
  * @file main.c
  * @author Frantisek Spunda
- * @date 2023-29-11
+ * @date 2023-30-11
  * @brief Project 2 for subject IZP in BC1
  *
  * @copyright Copyright (c) 2023
@@ -50,11 +50,13 @@ bool cmd_help(char **argv);
 bool cmd_test(char **argv);
 bool cmd_rpath(char **argv);
 bool cmd_lpath(char **argv);
+bool cmd_shortest(char **argv);
 
 bool map_test(map_t *map);
 bool map_load(map_t *map, char *filename);
 bool isborder(map_t *map, int r, int c, border_t border);
 bool find_hand_rule(map_t *map, int r, int c, border_t border, hand_rule_t leftright);
+int find_shortest(map_t *map, cell_t *distances, int r, int c, border_t border, cell_t distance);
 cell_t map_get_cell(map_t *map, int r, int c);
 border_t start_border(map_t *map, int r, int c, hand_rule_t leftright);
 border_t next_border(int r, int c, border_t border, int next, hand_rule_t leftright);
@@ -68,6 +70,7 @@ int main(int argc, char **argv)
       {"--test", 3, cmd_test},
       {"--rpath", 5, cmd_rpath},
       {"--lpath", 5, cmd_lpath},
+      {"--shortest", 5, cmd_shortest},
   };
 
   if (argc == 1)
@@ -237,6 +240,77 @@ bool find_hand_rule(map_t *map, int r, int c, border_t border, hand_rule_t leftr
   }
 
   return false;
+}
+
+bool cmd_shortest(char **argv)
+{
+
+  map_t map;
+  if (map_load(&map, argv[4]))
+  {
+    printf("Error while loading map\n");
+    return false;
+  }
+  if (map_test(&map))
+  {
+    printf("Invalid map\n");
+    map_free(&map);
+    return false;
+  }
+
+  int first_r = atoi(argv[2]) - 1;
+  int first_c = atoi(argv[3]) - 1;
+  border_t border = start_border(&map, first_r, first_c, RIGHT_HAND);
+  cell_t *distances = malloc(map.rows * map.cols * sizeof(cell_t));
+  for (int i = 0; i < map.rows * map.cols; i++)
+    distances[i] = 0b11111111;
+
+  if (border)
+    find_shortest(&map, distances, first_r, first_c, border, 0);
+
+  for (int row = 0; row < map.rows; row++)
+  {
+    for (int col = 0; col < map.cols; col++)
+      printf("%d ", distances[row * map.cols + col]);
+    printf("\n");
+  }
+  map_free(&map);
+  free(distances);
+
+  return false;
+}
+
+int find_shortest(map_t *map, cell_t *distances, int r, int c, border_t border, cell_t distance)
+{
+  if (distances[r * map->cols + c] > distance) // ???? ">="
+    distances[r * map->cols + c] = distance;
+  else
+    return 1;
+
+  printf("\n%d - <%d, %d>", distance, r, c);
+  for (int i = 1; i <= BORDER_SIZE; i++)
+  {
+    border_t new_border = next_border(r, c, border, i, RIGHT_HAND);
+
+    if (!isborder(map, r, c, new_border))
+    {
+      int new_r = new_border != TOP_BOTTOM ? r : (cell_type(r, c) ? r - 1 : r + 1);
+      int new_c = new_border == TOP_BOTTOM ? c : (new_border == LEFT ? c - 1 : c + 1);
+      int entry_border = new_border == TOP_BOTTOM ? new_border : new_border ^ 0b011;
+
+      if (new_r >= map->rows || new_r < 0 || new_c >= map->cols || new_c < 0)
+      {
+        printf("end %d,%d\n", r + 1, c + 1);
+      }
+      else
+      {
+        if (find_shortest(map, distances, new_r, new_c, entry_border, distance + 1))
+          printf("\33[2K\r");
+      }
+    }
+  }
+
+  return 0;
 }
 
 /**
